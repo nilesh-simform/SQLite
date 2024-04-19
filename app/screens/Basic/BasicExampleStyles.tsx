@@ -1,6 +1,5 @@
 import {StyleSheet} from 'react-native';
 
-
 export default StyleSheet.create({
   card: {
     flexDirection: 'row',
@@ -13,6 +12,7 @@ export default StyleSheet.create({
     width: 140,
     marginRight: 10,
     height: 40,
+    paddingLeft: 10,
   },
   btn: {
     width: 70,

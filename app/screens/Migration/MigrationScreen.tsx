@@ -1,25 +1,23 @@
-import React, {useEffect, useState} from 'react';
+import React, {FC, useEffect, useState} from 'react';
 import {
   Alert,
   FlatList,
+  Keyboard,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import styles from './MigrationStyles';
+import {todoItem} from '../../constants/types';
+import {addMovie, getMovies} from './queries';
+import {TodoCard} from '../../Components';
 import Database from '../../constants/config';
-const db = Database.getDatabase();
 
-type todoItem = {
-  id: number;
-  name: string;
-  price: number;
-};
-
-const MigrationExample = () => {
+const MigrationExample: FC<{}> = () => {
   const [movieName, setMovieName] = useState<string>('');
   const [moviePrice, setMoviePrice] = useState<number>();
+  const [isDBIntitialized, setIsDBInitialized] = useState(false);
   const [list, setList] = useState<todoItem[]>([]);
 
   const add_data = () => {
@@ -28,63 +26,44 @@ const MigrationExample = () => {
       return;
     }
 
-    db.executeSql(
-      'Insert into movies (name, price) values (?,?)',
-      [movieName, moviePrice],
-      result => {
-        console.log('Added successfully');
-        fetch_data();
-      },
-      e => {
-        console.log('Error', e);
-      },
-    );
-
-    setMovieName('');
-    setMoviePrice(undefined);
-  };
-
-  const fetch_data = () => {
-    db.transaction(async tx => {
-      tx.executeSql(
-        'select * from movies',
-        [],
-        (result, set) => {
-          let arr = [];
-          console.log('fetched successfully', set);
-          for (let i = 0; i < set.rows.length; i++) {
-            console.log(set.rows.item(i));
-            arr.push(set.rows.item(i));
-          }
-
-          setList(arr);
-        },
-        e => {
-          console.log('Error', e);
-        },
-      );
+    addMovie(movieName, moviePrice, () => {
+      fetch_data();
+      Keyboard.dismiss();
+      setMovieName('');
+      setMoviePrice(undefined);
     });
   };
 
+  const fetch_data = () => {
+    getMovies(setList);
+  };
+
+  const checkDBIntialization = () => {
+    const db = Database.getDatabase();
+
+    if (db) {
+      setIsDBInitialized(true);
+    } else {
+      setTimeout(() => {
+        checkDBIntialization();
+      }, 1000);
+    }
+  };
+
+  useEffect(()=>{
+    checkDBIntialization()
+  },[])
+
   useEffect(() => {
-    setTimeout(() => {
-      fetch_data();
-    }, 1000);
-  }, []);
+    if (isDBIntitialized) {
+      setTimeout(()=>{
+        fetch_data();
+      },1000)
+    }
+  }, [isDBIntitialized]);
 
   const _renderItems = ({item}: {item: todoItem}) => {
-    return (
-      <View style={styles.card}>
-        <View style={{flexDirection: 'row'}}>
-          <Text>Name: </Text>
-          <Text>{item.name}</Text>
-        </View>
-        <View style={{flexDirection: 'row'}}>
-          <Text>Price: </Text>
-          <Text>{item.price}$</Text>
-        </View>
-      </View>
-    );
+    return <TodoCard item={item} />;
   };
 
   return (
@@ -94,6 +73,7 @@ const MigrationExample = () => {
           value={movieName}
           style={styles.textInput}
           onChangeText={txt => setMovieName(txt)}
+          placeholder="Movie Name"
         />
         <TextInput
           value={moviePrice?.toString()}
@@ -104,6 +84,7 @@ const MigrationExample = () => {
               setMoviePrice(Number(txt));
             }
           }}
+          placeholder="Movie Price"
         />
         <TouchableOpacity onPress={add_data} style={styles.btn}>
           <Text style={{color: 'white'}}>Add</Text>
